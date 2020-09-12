@@ -126,9 +126,9 @@ class PandasHDF5:
         )
 
 
-    def load(self, path):
+    def read(self, path):
         import pandas as pd
-        return pd.load_hdf(path, key="dataframe")
+        return pd.read_hdf(path, key="dataframe")
 
 
 
