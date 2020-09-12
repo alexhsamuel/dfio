@@ -24,8 +24,12 @@ def cumsum(gen):
     return lambda n: gen(n).cumsum()
 
 
-def normal(mu=0, sigma=1):
-    return partial(np.random.normal, mu, sigma)
+def boolean():
+    return lambda s: np.random.randint(0, 2, s).astype(bool)
+
+
+def normal(mu=0, sigma=1, digits=12):
+    return lambda s: np.round(np.random.normal(mu, sigma, s), digits)
 
 
 def uniform(lo=0, hi=1):
@@ -76,19 +80,21 @@ def dataframe(**kw_args):
 CACHE_DIR = Path(__file__).parent / "gen-cache"
 
 # b: bool
-# f: float, normal
-# i: int, uniform
+# f: float, normal(6)
+# i: int, uniform(8)
 # t: S8, tickers
 
 def get_column(c):
-    if c == "f":
-        return normal()
+    if c == "b":
+        return boolean()
+    elif c == "f":
+        return normal(digits=6)
     elif c == "i":
-        return uniform_int(np.iinfo(int).min, np.iinfo(int).max())
+        return uniform_int(0, 1000000000)
     elif c == "t":
         return word(8, upper=True)
     else:
-        raise ValueError("Unknown column code: {c}")
+        raise ValueError(f"Unknown column code: {c}")
 
 
 def get_generator(codename):

@@ -16,7 +16,7 @@ def append(rec, *, path=DEFAULT_PATH):
 def load(*, path=DEFAULT_PATH):
     path = Path(path)
     with open(path, "r") as file:
-        recs = [ json.loads(l) for l in file.rstrip() ]
+        recs = [ json.loads(l.rstrip()) for l in file ]
     return recs
 
 
