@@ -19,6 +19,7 @@ def print_summary(recs):
             compression =r["method"].get("comp", None),
             length      =r["length"],
             method      =r["method"]["class"],
+            engine      =r["method"].get("engine", ""),
             size_ratio  =r.get("file_size", float("nan")) / r["data_size"],
             time        =time,
             bandwidth   =r["data_size"] / time,

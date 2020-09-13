@@ -86,6 +86,8 @@ class Pickle:
 
 
 
+#-------------------------------------------------------------------------------
+
 class PandasHDF5:
 
     COMPLIBS = (
@@ -133,6 +135,41 @@ class PandasHDF5:
     def read(self, path):
         import pandas as pd
         return pd.read_hdf(path, key="dataframe")
+
+
+
+#-------------------------------------------------------------------------------
+
+class Parquet:
+
+    def __init__(self, *, comp=None, engine="pyarrow"):
+        self.comp = comp
+        self.engine = engine
+
+
+    def __repr__(self):
+        return format_ctor(self, comp=self.comp, engine=self.engine)
+
+
+    def to_jso(self):
+        return {
+            "class"     : self.__class__.__name__,
+            "comp"      : self.comp,
+            "engine"    : self.engine,
+        }
+
+
+    def write(self, df, path):
+        df.to_parquet(
+            path,
+            engine=self.engine,
+            compression=self.comp,
+        )
+
+
+    def read(self, path):
+        import pandas as pd
+        return pd.read_parquet(path, engine=self.engine)
 
 
 

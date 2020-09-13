@@ -122,6 +122,10 @@ ALL_METHODS = [
     for f in ("table", "fixed")
     for c in dfio.methods.PandasHDF5.COMPLIBS
     for l in (1, 5, 9)
+] + [
+    dfio.methods.Parquet(comp=c, engine=e)
+    for c in (None, "gzip", "snappy", "brotli", )  # zstd?
+    for e in ("pyarrow", "fastparquet", )
 ]
 
 ALL_OPERATIONS = (
