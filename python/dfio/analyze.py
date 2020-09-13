@@ -39,4 +39,15 @@ def print_summary(db, *, operation=None, codename=None, length=None, method_clas
 
 import argparse
 
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--db-path", metavar="DB-PATH", default="./dfio-benchmark.json",
+        help="benchmark results output path [def: ./dfio-benchmark.json]")
+    args = parser.parse_args()
 
+
+
+if __name__ == "__main__":
+    main()
+ 
