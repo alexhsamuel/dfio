@@ -1,4 +1,5 @@
 import contextlib
+import os
 import pickle
 
 from   dfio.lib.py import format_ctor
@@ -119,8 +120,11 @@ class PandasHDF5:
 
     def write(self, df, path):
         complib, complevel = self.comp
+        # FIXME
+        if path.is_file():
+            os.unlink(path)
         df.to_hdf(
-            path, key="dataframe",
+            path, mode="w", key="dataframe",
             format=self.format,
             complib=complib, complevel=complevel,
         )
