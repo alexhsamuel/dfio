@@ -63,7 +63,10 @@ def word(length, upper=False):
     return gen
 
 
-def choice(choices):
+def sample(choices):
+    """
+    Samples from `choices` with replacement.
+    """
     return partial(np.random.choice, choices)
 
 
@@ -74,6 +77,19 @@ def dataframe(**kw_args):
 
     return gen
 
+
+#-------------------------------------------------------------------------------
+
+SCHEMAS = {
+    "bars": {
+        "instr" : sample(uniform_int(1000000, 10000000)(5000)),
+        "open"  : normal(digits=4),
+        "high"  : normal(digits=4),
+        "low"   : normal(digits=4),
+        "close" : normal(digits=4),
+        "volume": uniform_int(0, 100000),
+    },
+}
 
 #-------------------------------------------------------------------------------
 
@@ -97,8 +113,11 @@ def get_column(c):
         raise ValueError(f"Unknown column code: {c}")
 
 
-def get_generator(codename):
-    cols = { f"col{i:03d}": get_column(c) for i, c in enumerate(codename) }
+def get_generator(schema):
+    try:
+        cols = SCHEMAS[schema]
+    except KeyError:
+        cols = { f"col{i:03d}": get_column(c) for i, c in enumerate(schema) }
     return dataframe(**cols)
 
 

@@ -130,6 +130,7 @@ ALL_OPERATIONS = (
 )
 
 ALL_SCHEMAS = [
+    "bars",
     "i",
     "tbif",
     "iiiiiiii",
