@@ -65,7 +65,7 @@ def benchmark_write(method, codename, length, dir):
     path = dir / f"{codename}-{length}"
     try:
         times = _benchmark(lambda: method.write(df, path))
-        return _build_results("write", method, codename, df, path, times),
+        return _build_results("write", method, codename, df, path, times)
     finally:
         try:
             os.unlink(path)
@@ -84,7 +84,7 @@ def benchmark_read(method, codename, length, dir):
     method.write(df, path)
     try:
         times = _benchmark(lambda: method.read(path))
-        return _build_results("read", method, codename, df, path, times),
+        return _build_results("read", method, codename, df, path, times)
     finally:
         os.unlink(path)
         
