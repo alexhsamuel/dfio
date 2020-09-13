@@ -2,7 +2,7 @@ import json
 import os
 from   pathlib import Path
 
-DEFAULT_PATH = Path(__file__).parent / "db.json"
+DEFAULT_PATH = "./dfio-benchmark.json"
 
 #-------------------------------------------------------------------------------
 
