@@ -16,9 +16,9 @@ def print_summary(recs):
         t.append(
             operation   =r["operation"],
             codename    =r["codename"][: 12],  # FIXME
-            compression =r["method"].get("comp", None),
             length      =r["length"],
             method      =r["method"]["class"],
+            compression =r["method"].get("comp", None),
             engine      =r["method"].get("engine", ""),
             size_ratio  =r.get("file_size", float("nan")) / r["data_size"],
             time        =time,

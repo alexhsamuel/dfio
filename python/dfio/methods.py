@@ -103,20 +103,20 @@ class PandasHDF5:
         "blosc:zstd",
     )
 
-    def __init__(self, *, comp=("zlib", 0), format="fixed"):
+    def __init__(self, *, comp=("zlib", 0), engine="fixed"):
         self.comp = comp
-        self.format = format
+        self.engine = engine
 
 
     def __repr__(self):
-        return format_ctor(self, comp=self.comp, format=self.format)
+        return format_ctor(self, comp=self.comp, engine=self.engine)
 
 
     def to_jso(self):
         return {
             "class"     : self.__class__.__name__,
             "comp"      : list(self.comp),
-            "format"    : self.format,
+            "engine"    : self.engine,
         }
 
 
@@ -127,7 +127,7 @@ class PandasHDF5:
             os.unlink(path)
         df.to_hdf(
             path, mode="w", key="dataframe",
-            format=self.format,
+            format=self.engine,
             complib=complib, complevel=complevel,
         )
 
