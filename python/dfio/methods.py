@@ -26,7 +26,7 @@ def _zstd_open_read(path):
 
 FILE_COMPRESSIONS = (
     "gzip",
-    "bzip2",
+    # "bzip2",  # Too slow; don't test this anymore.
     "zstd",
 )
 
