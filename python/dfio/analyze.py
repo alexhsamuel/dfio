@@ -37,9 +37,13 @@ def print_summary(recs):
         x = t.rows[0][n]
         return all( r[n] == x for r in t.rows )
 
+    t.set_fmts()
     for n in t.rows[0]:
         if all_same(n):
+            val = t.rows[0][n]
+            print(f"{n:16s} = {t.fmts[n](val)}")
             t.fmts[n] = None
+    print()
 
     t.print()
 
