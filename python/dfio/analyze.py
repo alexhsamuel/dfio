@@ -1,12 +1,11 @@
 import fixfmt.table
 
-import dfio.clui
 import dfio.db
 
 #-------------------------------------------------------------------------------
 
-def get_num_cols(codename):
-    return len(codename)
+def get_num_cols(schema):
+    return len(schema)
 
 def print_summary(recs):
     t = fixfmt.table.RowTable()
@@ -15,7 +14,7 @@ def print_summary(recs):
         items = r["length"] * r["cols"]
         t.append(
             operation   =r["operation"],
-            codename    =r["codename"][: 12],  # FIXME
+            schema      =r["schema"][: 12],  # FIXME
             length      =r["length"],
             method      =r["method"]["class"],
             compression =r["method"].get("comp", None),
@@ -57,11 +56,36 @@ def main():
     parser.add_argument(
         "--db-path", metavar="DB-PATH", default=dfio.db.DEFAULT_PATH,
         help=f"benchmark results output path [def: {dfio.db.DEFAULT_PATH}]")
-    dfio.clui.add_filter_args(parser)
+    parser.add_argument(
+        "--operation", metavar="OP", default=None,
+        help="select operation OP")
+    parser.add_argument(
+        "--schema", metavar="NAME", default=None,
+        help="select table schema with NAME")
+    parser.add_argument(
+        "--length", metavar="LEN", type=int, default=None,
+        help="select tables of length LEN")
+    parser.add_argument(
+        "--method", metavar="CLASS", dest="method_class", default=None,
+        help="select method CLASS")
     args = parser.parse_args()
 
     recs = dfio.db.load(path=args.db_path)
-    recs = dfio.clui.filter_by_args(args, recs)
+
+    # Apply filters.
+    operation = getattr(args, "operation", None)
+    if operation is not None:
+        recs = ( i for i in recs if i["operation"] == operation )
+    schema = getattr(args, "schema", None)
+    if schema is not None:
+        recs = ( i for i in recs if i["schema"] == schema )
+    method_class = getattr(args, "method_class", None)
+    if method_class is not None:
+        recs = ( i for i in recs if i["method"]["class"] == method_class )
+    length = getattr(args, "length", None)
+    if length is not None:
+        recs = ( i for i in recs if i["length"] == length )
+
     print_summary(recs)
 
 

@@ -121,16 +121,16 @@ def get_generator(schema):
     return dataframe(**cols)
 
 
-def get_path(codename: str, length: int):
+def get_path(schema: str, length: int):
     """
     Returns the cache path, generating if necessary.
     """
     length = int(length)
-    path = CACHE_DIR / f"{codename}-{length}.pickle"
+    path = CACHE_DIR / f"{schema}-{length}.pickle"
 
     if not path.is_file():
-        logging.info(f"Generating: {codename} {length}")
-        generator = get_generator(codename)
+        logging.info(f"Generating: {schema} {length}")
+        generator = get_generator(schema)
         df = generator(length)
 
         logging.info(f"Writing: {path}")
@@ -141,12 +141,12 @@ def get_path(codename: str, length: int):
     return path
 
 
-def get_dataframe(codename: str, length: int):
+def get_dataframe(schema: str, length: int):
     """
     :return:
       The on-disk file size, and the dataframe.
     """
-    path = get_path(codename, length)
+    path = get_path(schema, length)
     with open(path, "rb") as file:
         return os.fstat(file.fileno()).st_size, pickle.load(file)
 

@@ -8,7 +8,6 @@ import socket
 import time
 
 import dfio.db
-import dfio.clui
 import dfio.methods
 from   . import gen
 
@@ -39,12 +38,12 @@ def _get_data_size(df):
     return int(sum( get(n) for n in df.dtypes.keys() ))
 
 
-def _build_results(operation, method, codename, df, path, times):
+def _build_results(operation, method, schema, df, path, times):
     return {
         "operation"     : operation,
         "method"        : method.to_jso(),
         "method_name"   : str(method),
-        "codename"      : codename,
+        "schema"        : schema,
         "cols"          : len(df.dtypes),
         "length"        : len(df),
         "data_size"     : _get_data_size(df),
@@ -61,16 +60,16 @@ def _build_results(operation, method, codename, df, path, times):
     }
 
 
-def benchmark_write(method, codename, length, dir):
+def benchmark_write(method, schema, length, dir):
     dir = Path(dir)
     if not dir.is_dir():
         raise NotADirectoryError(dir)
 
-    size, df = gen.get_dataframe(codename, length)
-    path = dir / f"{codename}-{length}"
+    size, df = gen.get_dataframe(schema, length)
+    path = dir / f"{schema}-{length}"
     try:
         times = _benchmark(lambda: method.write(df, path))
-        return _build_results("write", method, codename, df, path, times)
+        return _build_results("write", method, schema, df, path, times)
     finally:
         try:
             os.unlink(path)
@@ -79,29 +78,29 @@ def benchmark_write(method, codename, length, dir):
 
 
 
-def benchmark_read(method, codename, length, dir):
+def benchmark_read(method, schema, length, dir):
     dir = Path(dir)
     if not dir.is_dir():
         raise NotADirectoryError(dir)
 
-    raw_size, df = gen.get_dataframe(codename, length)
-    path = dir / f"{codename}-{length}"
+    raw_size, df = gen.get_dataframe(schema, length)
+    path = dir / f"{schema}-{length}"
     method.write(df, path)
     try:
         times = _benchmark(lambda: method.read(path))
-        return _build_results("read", method, codename, df, path, times)
+        return _build_results("read", method, schema, df, path, times)
     finally:
         os.unlink(path)
         
 
 #-------------------------------------------------------------------------------
 
-def benchmark(operation, method, codename, length, dir=".", *, path=dfio.db.DEFAULT_PATH):
+def benchmark(operation, method, schema, length, dir=".", *, path=dfio.db.DEFAULT_PATH):
     fn = globals()[f"benchmark_{operation}"]
     try:
-        rec = fn(method, codename, length, dir)
+        rec = fn(method, schema, length, dir)
     except Exception:
-        logging.error(f"failed: {operation} {method} {codename} {length}", exc_info=True)
+        logging.error(f"failed: {operation} {method} {schema} {length}", exc_info=True)
     else:
         dfio.db.append(rec, path=path)
 
@@ -115,10 +114,10 @@ ALL_METHODS = [
     for c in dfio.methods.FILE_COMPRESSIONS
     for l in (1, 5, 9)
 ] + [
-    dfio.methods.PandasHDF5(format=f)
+    dfio.methods.PandasHDF5(engine=f)
     for f in ("table", "fixed")
 ] + [
-    dfio.methods.PandasHDF5(comp=(c, l), format=f)
+    dfio.methods.PandasHDF5(comp=(c, l), engine=f)
     for f in ("table", "fixed")
     for c in dfio.methods.PandasHDF5.COMPLIBS
     for l in (1, 5, 9)
@@ -141,48 +140,45 @@ ALL_SCHEMAS = [
     "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
 ]
 
-ALL_LENGTHS = [
-       1000,
-      10000,
-     100000,
-    1000000,
-]
-
-ALL_RUNS = [
-    {
-        "method": method.to_jso(),
-        "operation": operation,
-        "codename": schema,
-        "length": length,
-    }
-    for method in ALL_METHODS
-    for operation in ALL_OPERATIONS
-    for schema in ALL_SCHEMAS
-    for length in ALL_LENGTHS
-]
-
 def main():
+    logging.basicConfig(level=logging.INFO)
+
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--db-path", metavar="DB-PATH", default="./dfio-benchmark.json",
         help="benchmark results output path [def: ./dfio-benchmark.json]")
-    dfio.clui.add_filter_args(parser)
+    parser.add_argument(
+        "-o", "--operation", metavar="OP", default=list(ALL_OPERATIONS),
+        help="select operation OP [def: all]")
+    parser.add_argument(
+        "-s", "--schema", metavar="NAME", default=list(ALL_SCHEMAS),
+        help="select table schema with NAME")
+    parser.add_argument(
+        "-l", "--length", metavar="LEN", type=int, nargs="+", default=[100000],
+        help="benchmark tables of length LEN")
+    parser.add_argument(
+        "-m", "--method", metavar="CLASS", dest="method_class", nargs="+", default=None,
+        help="select method CLASS")
     args = parser.parse_args()
+    print(args)
 
-    runs = dfio.clui.filter_by_args(args, ALL_RUNS)
+    methods = ALL_METHODS
+    if args.method_class is not None:
+        methods = ( m for m in methods if m.__class__.__name__ in args.method_class )
+
+    runs = (
+        (method, operation, schema, length)
+        for method in methods
+        for operation in args.operation
+        for schema in args.schema
+        for length in args.length
+    )
+
     for run in runs:
-        print(" ".join( f"{k}={v}" for k, v in run.items() ))
+        logging.info(" ".join( str(x) for x in run ))
+        method, operation, schema, length = run
 
-        method = run.pop("method")
-        method = getattr(dfio.methods, method.pop("class"))(**method)
-
-        benchmark(
-            run["operation"],
-            method,
-            run["codename"], 
-            run["length"],
-            path=args.db_path
-        )
+        benchmark(operation, method, schema, length, path=args.db_path)
 
 
 if __name__ == "__main__":
