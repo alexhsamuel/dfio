@@ -107,26 +107,6 @@ def benchmark(operation, method, schema, length, dir=".", *, path=dfio.db.DEFAUL
 
 #-------------------------------------------------------------------------------
 
-ALL_METHODS = [
-    dfio.methods.Pickle()
-] + [
-    dfio.methods.Pickle(comp=(c, l))
-    for c in dfio.methods.FILE_COMPRESSIONS
-    for l in (1, 5, 9)
-] + [
-    dfio.methods.PandasHDF5(engine=f)
-    for f in ("table", "fixed")
-] + [
-    dfio.methods.PandasHDF5(comp=(c, l), engine=f)
-    for f in ("table", "fixed")
-    for c in dfio.methods.PandasHDF5.COMPLIBS
-    for l in (1, 5, 9)
-] + [
-    dfio.methods.Parquet(comp=c, engine=e)
-    for c in (None, "gzip", "snappy", "brotli", )  # zstd?
-    for e in ("pyarrow", "fastparquet", )
-]
-
 ALL_OPERATIONS = (
     "write",
     "read",
@@ -134,10 +114,6 @@ ALL_OPERATIONS = (
 
 ALL_SCHEMAS = [
     "bars",
-    "i",
-    "tbif",
-    "iiiiiiii",
-    "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
 ]
 
 def main():
@@ -160,9 +136,8 @@ def main():
         "-m", "--method", metavar="CLASS", dest="method_class", nargs="+", default=None,
         help="select method CLASS")
     args = parser.parse_args()
-    print(args)
 
-    methods = ALL_METHODS
+    methods = dfio.methods.ALL_METHODS
     if args.method_class is not None:
         methods = ( m for m in methods if m.__class__.__name__ in args.method_class )
 

@@ -6,6 +6,8 @@ from   dfio.lib.py import format_ctor
 
 #-------------------------------------------------------------------------------
 
+ALL_METHODS = []
+
 @contextlib.contextmanager
 def _zstd_open_write(path, level):
     import zstd
@@ -56,6 +58,8 @@ def open_comp(path, comp, mode):
         raise ValueError(f"Unknown compression format: {format}")
 
 
+#-------------------------------------------------------------------------------
+
 class Pickle:
 
     def __init__(self, *, comp=(None, 0), protocol=pickle.HIGHEST_PROTOCOL):
@@ -71,7 +75,7 @@ class Pickle:
         return {
             "class"     : self.__class__.__name__,
             "comp"      : self.comp,
-            "protocol"  : self.protocol,
+            "engine"    : self.protocol,
         }
 
 
@@ -85,6 +89,53 @@ class Pickle:
             return pickle.load(file)
 
 
+
+ALL_METHODS.append(Pickle())
+ALL_METHODS.extend(
+    Pickle(comp=(c, l))
+    for c in FILE_COMPRESSIONS
+    for l in (1, 5, 9)
+)
+
+#-------------------------------------------------------------------------------
+
+class PandasCSV:
+
+    COMPRESSIONS = (
+        None,
+        "gzip",
+        "bz2",
+        "bz2",
+        "xz",
+    )
+
+    def __init__(self, *, comp=None):
+        self.comp = comp
+
+
+    def __repr__(self):
+        return format_ctor(self, comp=self.comp)
+
+
+    def to_jso(self):
+        return {
+            "class"     : self.__class__.__name__,
+            "comp"      : self.comp,
+        }
+
+
+    def write(self, df, path):
+        df.to_csv(path, compression=self.comp)
+
+
+    def read(self, path):
+        import pandas as pd
+        return pd.read_csv(path, compression=self.comp)
+
+
+
+ALL_METHODS.append(PandasCSV())
+ALL_METHODS.extend( PandasCSV(comp=c) for c in PandasCSV.COMPRESSIONS )
 
 #-------------------------------------------------------------------------------
 
@@ -138,6 +189,17 @@ class PandasHDF5:
 
 
 
+ALL_METHODS.extend(
+    PandasHDF5(engine=f)
+    for f in ("table", "fixed")
+)
+ALL_METHODS.extend(
+    PandasHDF5(comp=(c, l), engine=f)
+    for f in ("table", "fixed")
+    for c in PandasHDF5.COMPLIBS
+    for l in (1, 5, 9)
+)
+
 #-------------------------------------------------------------------------------
 
 class Parquet:
@@ -172,4 +234,12 @@ class Parquet:
         return pd.read_parquet(path, engine=self.engine)
 
 
+
+ALL_METHODS.extend(
+    Parquet(comp=c, engine=e)
+    for c in (None, "gzip", "snappy", "brotli", )  # zstd?
+    for e in ("pyarrow", "fastparquet", )
+)
+
+#-------------------------------------------------------------------------------
 
