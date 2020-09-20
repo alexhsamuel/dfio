@@ -57,16 +57,16 @@ def main():
         "--db-path", metavar="DB-PATH", default=dfio.db.DEFAULT_PATH,
         help=f"benchmark results output path [def: {dfio.db.DEFAULT_PATH}]")
     parser.add_argument(
-        "--operation", metavar="OP", default=None,
+        "--operation", "-o", metavar="OP", default=None,
         help="select operation OP")
     parser.add_argument(
-        "--schema", metavar="NAME", default=None,
+        "--schema", "-s", metavar="NAME", default=None,
         help="select table schema with NAME")
     parser.add_argument(
-        "--length", metavar="LEN", type=int, default=None,
+        "--length", "-l", metavar="LEN", type=int, default=None,
         help="select tables of length LEN")
     parser.add_argument(
-        "--method", metavar="CLASS", dest="method_class", default=None,
+        "--method", "-m", metavar="CLASS", dest="method_class", default=None,
         help="select method CLASS")
     args = parser.parse_args()
 
