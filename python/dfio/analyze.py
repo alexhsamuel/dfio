@@ -1,5 +1,6 @@
 import fixfmt.table
 
+import dfio.benchmark
 import dfio.db
 
 #-------------------------------------------------------------------------------
@@ -57,7 +58,7 @@ def main():
         "--db-path", metavar="DB-PATH", default=dfio.db.DEFAULT_PATH,
         help=f"benchmark results output path [def: {dfio.db.DEFAULT_PATH}]")
     parser.add_argument(
-        "--operation", metavar="OP", default=None,
+        "--operation", metavar="OP", nargs="+", default=dfio.benchmark.ALL_OPERATIONS,
         help="select operation OP")
     parser.add_argument(
         "--schema", metavar="NAME", default=None,
@@ -73,9 +74,7 @@ def main():
     recs = dfio.db.load(path=args.db_path)
 
     # Apply filters.
-    operation = getattr(args, "operation", None)
-    if operation is not None:
-        recs = ( i for i in recs if i["operation"] == operation )
+    recs = ( i for i in recs if i["operation"] in args.operation )
     schema = getattr(args, "schema", None)
     if schema is not None:
         recs = ( i for i in recs if i["schema"] == schema )

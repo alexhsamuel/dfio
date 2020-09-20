@@ -13,7 +13,12 @@ from   . import gen
 
 #-------------------------------------------------------------------------------
 
-def _benchmark(fn, *, burn=1, samples=3):
+class NotSupported(RuntimeError):
+
+    pass
+
+
+def _benchmark(fn, *, burn=1, samples=5):
     for _ in range(burn):
         fn()
 
@@ -77,6 +82,23 @@ def benchmark_write(method, schema, length, dir):
             pass
 
 
+def benchmark_decompress(method, schema, length, dir):
+    if not hasattr(method, "decompress"):
+        raise NotSupported(f"decompress for {method}")
+
+    dir = Path(dir)
+    if not dir.is_dir():
+        raise NotADirectoryError(dir)
+
+    raw_size, df = gen.get_dataframe(schema, length)
+    path = dir / f"{schema}-{length}"
+    method.write(df, path)
+    try:
+        times = _benchmark(lambda: method.decompress(path))
+        return _build_results("decompress", method, schema, df, path, times)
+    finally:
+        os.unlink(path)
+
 
 def benchmark_read(method, schema, length, dir):
     dir = Path(dir)
@@ -91,7 +113,7 @@ def benchmark_read(method, schema, length, dir):
         return _build_results("read", method, schema, df, path, times)
     finally:
         os.unlink(path)
-        
+
 
 #-------------------------------------------------------------------------------
 
@@ -99,6 +121,8 @@ def benchmark(operation, method, schema, length, dir=".", *, path=dfio.db.DEFAUL
     fn = globals()[f"benchmark_{operation}"]
     try:
         rec = fn(method, schema, length, dir)
+    except NotSupported:
+        logging.info(f"not supported: {operation} {method} {schema} {length}")
     except Exception:
         logging.error(f"failed: {operation} {method} {schema} {length}", exc_info=True)
     else:
@@ -109,6 +133,7 @@ def benchmark(operation, method, schema, length, dir=".", *, path=dfio.db.DEFAUL
 
 ALL_OPERATIONS = (
     "write",
+    "decompress",
     "read",
 )
 

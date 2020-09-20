@@ -84,6 +84,14 @@ class Pickle:
             pickle.dump(df, file, protocol=self.protocol)
 
 
+    def decompress(self, path):
+        BLOCK_SIZE = 1024**2
+        with open_comp(path, self.comp, "r") as file:
+            while True:
+                if len(file.read(BLOCK_SIZE)) < BLOCK_SIZE:
+                    break
+
+
     def read(self, path):
         with open_comp(path, self.comp, "r") as file:
             return pickle.load(file)
