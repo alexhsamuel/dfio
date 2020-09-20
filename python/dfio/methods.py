@@ -8,6 +8,11 @@ from   dfio.lib.py import format_ctor
 
 ALL_METHODS = []
 
+def clean_up(path):
+    with contextlib.suppress(FileNotFoundError):
+        os.unlink(path)
+
+
 @contextlib.contextmanager
 def _zstd_open_write(path, level):
     import zstd
@@ -60,7 +65,27 @@ def open_comp(path, comp, mode):
 
 #-------------------------------------------------------------------------------
 
-class Pickle:
+class _Method:
+
+    def get_file_size(self, path):
+        return path.stat().st_size
+
+
+    def clean_up(self, path):
+        with contextlib.suppress(FileNotFoundError):
+            os.unlink(path)
+
+
+    def to_jso(self):
+        return {
+            "class"     : self.__class__.__name__,
+        }
+
+
+
+#-------------------------------------------------------------------------------
+
+class Pickle(_Method):
 
     def __init__(self, *, comp=(None, 0), protocol=pickle.HIGHEST_PROTOCOL):
         self.comp = comp
@@ -73,7 +98,7 @@ class Pickle:
 
     def to_jso(self):
         return {
-            "class"     : self.__class__.__name__,
+            **super().to_jso(),
             "comp"      : self.comp,
             "engine"    : self.protocol,
         }
@@ -99,7 +124,7 @@ ALL_METHODS.extend(
 
 #-------------------------------------------------------------------------------
 
-class PandasCSV:
+class PandasCSV(_Method):
 
     COMPRESSIONS = (
         None,
@@ -119,7 +144,7 @@ class PandasCSV:
 
     def to_jso(self):
         return {
-            "class"     : self.__class__.__name__,
+            **super().to_jso(),
             "comp"      : self.comp,
         }
 
@@ -139,7 +164,7 @@ ALL_METHODS.extend( PandasCSV(comp=c) for c in PandasCSV.COMPRESSIONS )
 
 #-------------------------------------------------------------------------------
 
-class PandasHDF5:
+class PandasHDF5(_Method):
 
     COMPLIBS = (
         "zlib",
@@ -165,7 +190,7 @@ class PandasHDF5:
 
     def to_jso(self):
         return {
-            "class"     : self.__class__.__name__,
+            **super().to_jso(),
             "comp"      : list(self.comp),
             "engine"    : self.engine,
         }
@@ -174,8 +199,7 @@ class PandasHDF5:
     def write(self, df, path):
         complib, complevel = self.comp
         # FIXME
-        if path.is_file():
-            os.unlink(path)
+        clean_up(path)
         df.to_hdf(
             path, mode="w", key="dataframe",
             format=self.engine,
@@ -202,7 +226,7 @@ ALL_METHODS.extend(
 
 #-------------------------------------------------------------------------------
 
-class Parquet:
+class Parquet(_Method):
 
     def __init__(self, *, comp=None, engine="pyarrow"):
         self.comp = comp
@@ -215,7 +239,7 @@ class Parquet:
 
     def to_jso(self):
         return {
-            "class"     : self.__class__.__name__,
+            **super().to_jso(),
             "comp"      : self.comp,
             "engine"    : self.engine,
         }
@@ -242,4 +266,46 @@ ALL_METHODS.extend(
 )
 
 #-------------------------------------------------------------------------------
+
+class DuckDB(_Method):
+
+    def __repr__(self):
+        return format_ctor(self)
+
+
+    def get_file_size(self, path):
+        size = path.stat().st_size
+        wal_path = path.parent / (path.name + ".wal")
+        with contextlib.suppress(FileNotFoundError):
+            size += wal_path.stat().st_size
+        return size
+
+
+    def clean_up(self, path):
+        super().clean_up(path)
+        wal_path = path.parent / (path.name + ".wal")
+        with contextlib.suppress(FileNotFoundError):
+            os.unlink(wal_path)
+
+
+    def write(self, df, path):
+        import duckdb
+
+        clean_up(path)
+        with contextlib.closing(duckdb.connect(str(path))) as con:
+            con.register("df_view", df)
+            con.execute("CREATE TABLE df_table AS SELECT * FROM df_view")
+            con.unregister("df_view")
+
+
+    def read(self, path):
+        import duckdb
+
+        with contextlib.closing(duckdb.connect(str(path), read_only=True)) as con:
+            con.execute("SELECT * FROM df_table")
+            return con.fetchdf()
+
+
+
+ALL_METHODS.append(DuckDB())
 

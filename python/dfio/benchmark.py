@@ -47,7 +47,7 @@ def _build_results(operation, method, schema, df, path, times):
         "cols"          : len(df.dtypes),
         "length"        : len(df),
         "data_size"     : _get_data_size(df),
-        "file_size"     : os.stat(path).st_size,
+        "file_size"     : method.get_file_size(path),
         "dir"           : str(path.parent),
         "timestamp"     : datetime.datetime.utcnow().isoformat(),
         "hostname"      : socket.gethostname(),
@@ -71,10 +71,7 @@ def benchmark_write(method, schema, length, dir):
         times = _benchmark(lambda: method.write(df, path))
         return _build_results("write", method, schema, df, path, times)
     finally:
-        try:
-            os.unlink(path)
-        except FileNotFoundError:
-            pass
+        method.clean_up(path)
 
 
 
@@ -90,7 +87,7 @@ def benchmark_read(method, schema, length, dir):
         times = _benchmark(lambda: method.read(path))
         return _build_results("read", method, schema, df, path, times)
     finally:
-        os.unlink(path)
+        method.clean_up(path)
         
 
 #-------------------------------------------------------------------------------
