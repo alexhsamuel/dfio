@@ -79,7 +79,7 @@ def benchmark_read(method, df, dir, *, samples=3):
         return _build_results("read", method, df, path, times)
     finally:
         method.clean_up(path)
-        
+
 
 #-------------------------------------------------------------------------------
 
