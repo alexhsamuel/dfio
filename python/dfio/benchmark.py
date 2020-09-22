@@ -1,8 +1,10 @@
 import argparse
 import datetime
+import itertools
 import numpy as np
 import logging
 from   pathlib import Path
+import pickle
 import socket
 import tempfile
 import time
@@ -80,27 +82,6 @@ def benchmark_read(method, df, dir):
 
 #-------------------------------------------------------------------------------
 
-def benchmark(operation, method, schema, length, dir=".", *, path=dfio.db.DEFAULT_PATH):
-    dir = Path(dir)
-    if not dir.is_dir():
-        raise NotADirectoryError(dir)
-
-    df = gen.get_dataframe(schema, length)
-
-    fn = globals()[f"benchmark_{operation}"]
-    try:
-        rec = fn(method, df, dir)
-    except Exception:
-        logging.error(f"failed: {operation} {method} {schema} {length}", exc_info=True)
-    else:
-        rec.update({
-            "schema"    : schema,
-        })
-        dfio.db.append(rec, path=path)
-
-
-#-------------------------------------------------------------------------------
-
 ALL_OPERATIONS = (
     "write",
     "read",
@@ -115,20 +96,23 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "-m", "--method", metavar="CLASS", dest="method_class", nargs="+", default=None,
-        help="select method CLASS")
+        "-m", "--method", metavar="CLASS", dest="method_class", default=None,
+        help="select method CLASS [def: all]")
     parser.add_argument(
-        "-o", "--operation", metavar="OP", default=list(ALL_OPERATIONS),
+        "-o", "--operation", metavar="OP", default=None,
         help="select operation OP [def: all]")
     parser.add_argument(
-        "-s", "--schema", metavar="NAME", default=list(ALL_SCHEMAS),
-        help="select table schema with NAME")
+        "-s", "--schema", metavar="NAME",
+        help="generate table with schema NAME")
     parser.add_argument(
-        "-l", "--length", metavar="LEN", type=int, nargs="+", default=[100000],
-        help="benchmark tables of length LEN")
+        "-l", "--length", metavar="LEN", type=int, default=100000,
+        help="generate table of length LEN [def: 100000]")
     parser.add_argument(
         "--data", metavar="PATH", type=Path, default=None,
         help="use pickled dataframe in PATH (ignores -ls)")
+    parser.add_argument(
+        "--dir", metavar="DIR", type=Path, default=Path("."),
+        help="benchmark reads/writes from DIR [def: .]")
     parser.add_argument(
         "--db-path", metavar="DB-PATH", default="./dfio-benchmark.json",
         help="benchmark results output path [def: ./dfio-benchmark.json]")
@@ -136,21 +120,34 @@ def main():
 
     methods = dfio.methods.ALL_METHODS
     if args.method_class is not None:
-        methods = ( m for m in methods if m.__class__.__name__ in args.method_class )
+        methods = [ m for m in methods if m.__class__.__name__ in args.method_class ]
+    operations = ALL_OPERATIONS if args.operation is None else [args.operation]
 
-    runs = (
-        (method, operation, schema, length)
-        for method in methods
-        for operation in args.operation
-        for schema in args.schema
-        for length in args.length
-    )
+    if not args.dir.is_dir():
+        parser.error(f"not a directory: {args.dir}")
 
-    for run in runs:
-        logging.info(" ".join( str(x) for x in run ))
-        method, operation, schema, length = run
+    meta = {}
 
-        benchmark(operation, method, schema, length, path=args.db_path)
+    # Load or generate the benchmark data.
+    if args.data is not None:
+        with open(args.data, "rb") as file:
+            df = pickle.load(file)
+        meta.update(data=str(args.data))
+    else:
+        df = gen.get_dataframe(args.schema, args.length)
+        meta.update(schema=args.schema, length=args.length)
+
+    for method, operation in itertools.product(methods, operations):
+        logging.info(f"{method} {operation}")
+
+        fn = globals()[f"benchmark_{operation}"]
+        try:
+            rec = fn(method, df, args.dir)
+        except Exception:
+            logging.error(f"failed: {operation} {method}", exc_info=True)
+        else:
+            rec.update(meta)
+            dfio.db.append(rec, path=args.db_path)
 
 
 if __name__ == "__main__":
