@@ -14,7 +14,8 @@ def print_summary(recs):
         items = r["length"] * r["cols"]
         t.append(
             operation   =r["operation"],
-            schema      =r["schema"][: 12],  # FIXME
+            schema      =r.get("schema", ""),
+            data        =r.get("data", ""),
             length      =r["length"],
             method      =r["method"]["class"],
             compression =r["method"].get("comp", None),

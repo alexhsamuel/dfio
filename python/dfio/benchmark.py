@@ -53,6 +53,7 @@ def _build_results(operation, method, df, path, times):
         "timestamp"     : datetime.datetime.utcnow().isoformat(),
         "hostname"      : socket.gethostname(),
         "time"          : {
+            "count"     : len(times),
             "min"       : float(np.min(times)),
             "spread"    : float(np.max(times) - np.min(times)),
             "mean"      : float(np.mean(times)),
@@ -61,20 +62,20 @@ def _build_results(operation, method, df, path, times):
     }
 
 
-def benchmark_write(method, df, dir):
+def benchmark_write(method, df, dir, *, samples=3):
     path = Path(tempfile.mktemp(dir=dir))
     try:
-        times = _benchmark(lambda: method.write(df, path))
+        times = _benchmark(lambda: method.write(df, path), samples=samples)
         return _build_results("write", method, df, path, times)
     finally:
         method.clean_up(path)
 
 
-def benchmark_read(method, df, dir):
+def benchmark_read(method, df, dir, *, samples=3):
     path = Path(tempfile.mktemp(dir=dir))
     method.write(df, path)
     try:
-        times = _benchmark(lambda: method.read(path))
+        times = _benchmark(lambda: method.read(path), samples=samples)
         return _build_results("read", method, df, path, times)
     finally:
         method.clean_up(path)
@@ -114,6 +115,9 @@ def main():
         "--dir", metavar="DIR", type=Path, default=Path("."),
         help="benchmark reads/writes from DIR [def: .]")
     parser.add_argument(
+        "--samples", metavar="NUM", type=int, default=3,
+        help="time NUM samples per operation [def: 3]")
+    parser.add_argument(
         "--db-path", metavar="DB-PATH", default="./dfio-benchmark.json",
         help="benchmark results output path [def: ./dfio-benchmark.json]")
     args = parser.parse_args()
@@ -132,7 +136,7 @@ def main():
     if args.data is not None:
         with open(args.data, "rb") as file:
             df = pickle.load(file)
-        meta.update(data=str(args.data))
+        meta.update(data=args.data.name)
     else:
         df = gen.get_dataframe(args.schema, args.length)
         meta.update(schema=args.schema, length=args.length)
@@ -142,7 +146,7 @@ def main():
 
         fn = globals()[f"benchmark_{operation}"]
         try:
-            rec = fn(method, df, args.dir)
+            rec = fn(method, df, args.dir, samples=args.samples)
         except Exception:
             logging.error(f"failed: {operation} {method}", exc_info=True)
         else:
