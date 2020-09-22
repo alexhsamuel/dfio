@@ -267,6 +267,44 @@ ALL_METHODS.extend(
 
 #-------------------------------------------------------------------------------
 
+class Feather(_Method):
+
+    COMPRESSIONS = (
+        "uncompressed",
+        "lz4",
+        "zstd",
+    )
+
+    def __init__(self, comp="uncompressed"):
+        self.comp = comp
+
+
+    def __repr__(self):
+        return format_ctor(self, comp=self.comp)
+
+
+    def to_jso(self):
+        return {
+            **super().to_jso(),
+            "comp"      : self.comp,
+        }
+
+
+    def write(self, df, path):
+        import pyarrow.feather
+        pyarrow.feather.write_feather(df, path, compression=self.comp)
+
+
+    def read(self, path):
+        import pyarrow.feather
+        return pyarrow.feather.read_feather(path)
+
+        
+
+ALL_METHODS.extend( Feather(c) for c in Feather.COMPRESSIONS )
+
+#-------------------------------------------------------------------------------
+
 class DuckDB(_Method):
 
     def __repr__(self):
