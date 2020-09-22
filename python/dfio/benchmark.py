@@ -103,7 +103,7 @@ def main():
         "-o", "--operation", metavar="OP", default=None,
         help="select operation OP [def: all]")
     parser.add_argument(
-        "-s", "--schema", metavar="NAME",
+        "-s", "--schema", metavar="NAME", default="bars",
         help="generate table with schema NAME")
     parser.add_argument(
         "-l", "--length", metavar="LEN", type=int, default=100000,
