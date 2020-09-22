@@ -1,10 +1,10 @@
 import argparse
 import datetime
 import numpy as np
-import os
 import logging
 from   pathlib import Path
 import socket
+import tempfile
 import time
 
 import dfio.db
@@ -38,12 +38,11 @@ def _get_data_size(df):
     return int(sum( get(n) for n in df.dtypes.keys() ))
 
 
-def _build_results(operation, method, schema, df, path, times):
+def _build_results(operation, method, df, path, times):
     return {
         "operation"     : operation,
         "method"        : method.to_jso(),
         "method_name"   : str(method),
-        "schema"        : schema,
         "cols"          : len(df.dtypes),
         "length"        : len(df),
         "data_size"     : _get_data_size(df),
@@ -60,32 +59,21 @@ def _build_results(operation, method, schema, df, path, times):
     }
 
 
-def benchmark_write(method, schema, length, dir):
-    dir = Path(dir)
-    if not dir.is_dir():
-        raise NotADirectoryError(dir)
-
-    size, df = gen.get_dataframe(schema, length)
-    path = dir / f"{schema}-{length}"
+def benchmark_write(method, df, dir):
+    path = Path(tempfile.mktemp(dir=dir))
     try:
         times = _benchmark(lambda: method.write(df, path))
-        return _build_results("write", method, schema, df, path, times)
+        return _build_results("write", method, df, path, times)
     finally:
         method.clean_up(path)
 
 
-
-def benchmark_read(method, schema, length, dir):
-    dir = Path(dir)
-    if not dir.is_dir():
-        raise NotADirectoryError(dir)
-
-    raw_size, df = gen.get_dataframe(schema, length)
-    path = dir / f"{schema}-{length}"
+def benchmark_read(method, df, dir):
+    path = Path(tempfile.mktemp(dir=dir))
     method.write(df, path)
     try:
         times = _benchmark(lambda: method.read(path))
-        return _build_results("read", method, schema, df, path, times)
+        return _build_results("read", method, df, path, times)
     finally:
         method.clean_up(path)
         
@@ -93,12 +81,21 @@ def benchmark_read(method, schema, length, dir):
 #-------------------------------------------------------------------------------
 
 def benchmark(operation, method, schema, length, dir=".", *, path=dfio.db.DEFAULT_PATH):
+    dir = Path(dir)
+    if not dir.is_dir():
+        raise NotADirectoryError(dir)
+
+    df = gen.get_dataframe(schema, length)
+
     fn = globals()[f"benchmark_{operation}"]
     try:
-        rec = fn(method, schema, length, dir)
+        rec = fn(method, df, dir)
     except Exception:
         logging.error(f"failed: {operation} {method} {schema} {length}", exc_info=True)
     else:
+        rec.update({
+            "schema"    : schema,
+        })
         dfio.db.append(rec, path=path)
 
 
@@ -118,8 +115,8 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--db-path", metavar="DB-PATH", default="./dfio-benchmark.json",
-        help="benchmark results output path [def: ./dfio-benchmark.json]")
+        "-m", "--method", metavar="CLASS", dest="method_class", nargs="+", default=None,
+        help="select method CLASS")
     parser.add_argument(
         "-o", "--operation", metavar="OP", default=list(ALL_OPERATIONS),
         help="select operation OP [def: all]")
@@ -130,8 +127,11 @@ def main():
         "-l", "--length", metavar="LEN", type=int, nargs="+", default=[100000],
         help="benchmark tables of length LEN")
     parser.add_argument(
-        "-m", "--method", metavar="CLASS", dest="method_class", nargs="+", default=None,
-        help="select method CLASS")
+        "--data", metavar="PATH", type=Path, default=None,
+        help="use pickled dataframe in PATH (ignores -ls)")
+    parser.add_argument(
+        "--db-path", metavar="DB-PATH", default="./dfio-benchmark.json",
+        help="benchmark results output path [def: ./dfio-benchmark.json]")
     args = parser.parse_args()
 
     methods = dfio.methods.ALL_METHODS

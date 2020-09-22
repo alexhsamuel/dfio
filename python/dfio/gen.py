@@ -148,6 +148,6 @@ def get_dataframe(schema: str, length: int):
     """
     path = get_path(schema, length)
     with open(path, "rb") as file:
-        return os.fstat(file.fileno()).st_size, pickle.load(file)
+        return pickle.load(file)
 
 
