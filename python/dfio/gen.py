@@ -1,7 +1,7 @@
+import argparse
 from   functools import partial
 import logging
 import numpy as np
-import os
 import pandas as pd
 from   pathlib import Path
 import pickle
@@ -93,8 +93,6 @@ SCHEMAS = {
 
 #-------------------------------------------------------------------------------
 
-CACHE_DIR = Path(__file__).parent / "gen-cache"
-
 # b: bool
 # f: float, normal(6)
 # i: int, uniform(8)
@@ -121,33 +119,27 @@ def get_generator(schema):
     return dataframe(**cols)
 
 
-def get_path(schema: str, length: int):
-    """
-    Returns the cache path, generating if necessary.
-    """
-    length = int(length)
-    path = CACHE_DIR / f"{schema}-{length}.pickle"
+#-------------------------------------------------------------------------------
 
-    if not path.is_file():
-        logging.info(f"Generating: {schema} {length}")
-        generator = get_generator(schema)
-        df = generator(length)
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--length", metavar="LEN", type=int, default=10000,
+        help="generate dataframe with LEN rows [def: 10000]")
+    parser.add_argument(
+        "--schema", metavar="SCHEMA", default="bars",
+        help="generate dataframe with SCHEMA [def: bars]")
+    parser.add_argument(
+        "path", metavar="PATH", type=Path,
+        help="write generated dataframe to PATH")
+    args = parser.parse_args()
 
-        logging.info(f"Writing: {path}")
-        os.makedirs(CACHE_DIR, exist_ok=True)
-        with open(path, "wb") as file:
-            pickle.dump(df, file, pickle.HIGHEST_PROTOCOL)
-
-    return path
+    generator = get_generator(args.schema)
+    df = generator(args.length)
+    with open(args.path, "wb") as file:
+        pickle.dump(df, file)
 
 
-def get_dataframe(schema: str, length: int):
-    """
-    :return:
-      The on-disk file size, and the dataframe.
-    """
-    path = get_path(schema, length)
-    with open(path, "rb") as file:
-        return pickle.load(file)
-
+if __name__ == "__main__":
+    main()
 

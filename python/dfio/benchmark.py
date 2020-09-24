@@ -11,7 +11,6 @@ import time
 
 import dfio.db
 import dfio.methods
-from   . import gen
 
 #-------------------------------------------------------------------------------
 
@@ -97,20 +96,14 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
+        "data", metavar="PATH", type=Path, default=None,
+        help="benchmark data from pickled dataframe in PATH")
+    parser.add_argument(
         "-m", "--method", metavar="CLASS", dest="method_class", default=None,
         help="select method CLASS [def: all]")
     parser.add_argument(
         "-o", "--operation", metavar="OP", default=None,
         help="select operation OP [def: all]")
-    parser.add_argument(
-        "-s", "--schema", metavar="NAME", default="bars",
-        help="generate table with schema NAME")
-    parser.add_argument(
-        "-l", "--length", metavar="LEN", type=int, default=100000,
-        help="generate table of length LEN [def: 100000]")
-    parser.add_argument(
-        "--data", metavar="PATH", type=Path, default=None,
-        help="use pickled dataframe in PATH (ignores -ls)")
     parser.add_argument(
         "--dir", metavar="DIR", type=Path, default=Path("."),
         help="benchmark reads/writes from DIR [def: .]")
@@ -136,13 +129,9 @@ def main():
     meta = {}
 
     # Load or generate the benchmark data.
-    if args.data is not None:
-        with open(args.data, "rb") as file:
-            df = pickle.load(file)
-        meta.update(data=args.data.name)
-    else:
-        df = gen.get_dataframe(args.schema, args.length)
-        meta.update(schema=args.schema, length=args.length)
+    with open(args.data, "rb") as file:
+        df = pickle.load(file)
+    meta.update(data=args.data.name)
 
     for method, operation in itertools.product(methods, operations):
         logging.info(f"{method} {operation}")
