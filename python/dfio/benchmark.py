@@ -124,7 +124,10 @@ def main():
 
     methods = dfio.methods.ALL_METHODS
     if args.method_class is not None:
-        methods = [ m for m in methods if m.__class__.__name__ in args.method_class ]
+        methods = [
+            m for m in methods
+            if m.__class__.__name__ in args.method_class
+        ]
     operations = ALL_OPERATIONS if args.operation is None else [args.operation]
 
     if not args.dir.is_dir():
