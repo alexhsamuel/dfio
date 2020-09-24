@@ -14,6 +14,7 @@ Supports some compression formats, depending on the file format.
 
 - duckdb
 - fastparquet
+- [fixfmt](https://pypi.org/project/fixfmt/)
 - pandas
 - pyarrow
 - zstandard
