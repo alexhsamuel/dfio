@@ -12,11 +12,13 @@ Supports some compression formats, depending on the file format.
 
 ### Requirements
 
+- brotli
 - duckdb
 - fastparquet
 - [fixfmt](https://pypi.org/project/fixfmt/)
 - pandas
 - pyarrow
+- pytables
 - zstandard
 
 `requirements.txt` coming soon.
