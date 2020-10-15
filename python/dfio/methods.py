@@ -1,5 +1,6 @@
 import contextlib
 import os
+import pandas as pd
 import pickle
 
 from   dfio.lib.py import format_ctor
@@ -305,6 +306,38 @@ ALL_METHODS.extend( Feather(c) for c in Feather.COMPRESSIONS )
 
 #-------------------------------------------------------------------------------
 
+class SQLite(_Method):
+
+    def __repr__(self):
+        return format_ctor(self)
+
+
+    def to_jso(self):
+        return {
+            **super().to_jso(),
+        }
+
+
+    def write(self, df, path):
+        import sqlite3
+
+        clean_up(path)
+        with sqlite3.connect(path) as conn:
+            df.to_sql("dataframe", conn, if_exists="fail")
+
+
+    def read(self, path):
+        import sqlite3
+
+        with sqlite3.connect(path) as conn:
+            return pd.read_sql("SELECT * FROM dataframe", conn)
+
+
+
+ALL_METHODS.append(SQLite())
+
+#-------------------------------------------------------------------------------
+
 class DuckDB(_Method):
 
     def __repr__(self):
@@ -344,6 +377,8 @@ class DuckDB(_Method):
             return con.fetchdf()
 
 
+
+#-------------------------------------------------------------------------------
 
 ALL_METHODS.append(DuckDB())
 
